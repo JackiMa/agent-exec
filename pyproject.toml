@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "agent-exec"
 version = "0.1.0"
 description = "A local agent execution service shared by CLI, HTTP and MCP clients"
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "httpx>=0.27,<1", "PyYAML>=6,<7", "mcp>=1.12,<2"]
 

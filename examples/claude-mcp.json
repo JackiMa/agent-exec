@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "agent_exec": {
+      "command": "/absolute/path/to/agent-exec/.venv/bin/agent-exec",
+      "args": ["mcp"],
+      "env": {
+        "AGENT_EXEC_URL": "http://127.0.0.1:9891",
+        "AGENT_EXEC_TOKEN_FILE": "/absolute/path/to/agent-exec/service.token"
+      }
+    }
+  }
+}

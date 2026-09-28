@@ -1,0 +1,9 @@
+# Add this stdio server to Codex; it proxies the local agent-exec service.
+# The token stays in this file path, never in this configuration.
+[mcp_servers.agent_exec]
+command = "/absolute/path/to/agent-exec/.venv/bin/agent-exec"
+args = ["mcp"]
+
+[mcp_servers.agent_exec.env]
+AGENT_EXEC_URL = "http://127.0.0.1:9891"
+AGENT_EXEC_TOKEN_FILE = "/absolute/path/to/agent-exec/service.token"

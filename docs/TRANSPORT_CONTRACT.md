@@ -17,15 +17,16 @@ All methods synchronous; run execution occurs in service-owned threads. Use thre
 - capabilities() -> {roles: [{name,provider,model,effort,access,kind}], workspaces: [{id,allow_write}], limits: {...}}
 - submit(payload: dict, idempotency_key: str | None = None) -> run dict
   Payload: workspace (registered ID), goal (1..100000 chars), role (default codex-scout), timeout_seconds (positive int capped by settings), caller_task_id (optional <=256 chars), context (optional <=100000 chars).
-  Unknown fields rejected. Same key+normalized payload returns same run, different payload conflicts.
+  Unknown fields rejected. Same key+same JSON body (key order ignored) returns same run even if the workspace becomes unavailable; different bodies conflict.
 - plan(payload: dict) -> {role,provider,model,access,workspace,base_revision,argv,...} no model/worktree execution, redacted command preview.
 - list_runs(limit: int = 100) -> list[run dict], max 200.
 - get(run_id) -> run dict, 404 for unknown ID.
 - events(run_id, after: int = 0, limit: int = 200) -> list[{id,run_id,type,time,data}], global increasing IDs; no SSE required; poll cursor, clamp limit.
 - logs(run_id, stream: str = "stdout", offset: int = 0, limit: int = 65536) -> {text,offset,next_offset,truncated}; bounded byte ranges, only stdout/stderr accepted.
 - result(run_id) -> {run: run dict, output: str, truncated: bool}, output capped and only executor artifact, never interpreted as trusted verdict.
+- diff(run_id) -> bounded frozen patch, SHA256, base revision, lossless patch_base64. Includes untracked files; does not touch the index or adopt changes.
 - cancel(run_id) -> run dict; queued becomes cancelled, running sets cancel_requested then process-group cleanup; terminal idempotent.
-- retry(run_id) -> new run dict (terminal only); explicit, never automatic. Record retry_of.
+- retry(run_id) -> new run dict (terminal only); explicit, never automatic. Record retry_of. Changed role, executable or workspace mapping requires a new submission. Writing retries retain the original base revision.
 - verdict(run_id, accepted: bool, reason: str, evidence: list[str]) -> run dict. Only succeeded can be accepted, failed can be rejected. accepted requires nonempty reason and evidence. No claim of independent identity: API client owns judgment.
 Run: id, status, acceptance (pending/accepted/rejected), role, workspace, created_at, updated_at, started_at, finished_at, exit_code, error, cancel_requested, caller_task_id, retry_of, execution_cwd, base_revision, provider_session_id, evidence/reason. States queued/running/succeeded/failed/cancelled/timed_out/interrupted. IDs opaque 32 lowercase hex.
 No arbitrary argv/env/path in requests; only local config can define executable. No external auto-merge/adopt/delete API.
@@ -35,7 +36,7 @@ Public GET /healthz returns ONLY {status,version}; all /v1 endpoints require Aut
 GET /v1/health, /v1/capabilities, /v1/runs?limit=...
 POST /v1/runs (Idempotency-Key header) -> 202
 POST /v1/plan
-GET /v1/runs/{id}, /events?after=&limit=, /logs?stream=&offset=&limit=, /result
+GET /v1/runs/{id}, /events?after=&limit=, /logs?stream=&offset=&limit=, /result, /diff
 POST /v1/runs/{id}/cancel, /retry, /verdict {accepted,reason,evidence}
 Server CLI: agent-exec serve [--config PATH] (agent-execd same main). Refuse non-loopback if token absent/too short. Prefer TLS/SSH for remote; no automatic firewall or public exposure.
 
@@ -49,6 +50,5 @@ New task submit --wait returns nonzero for failed/cancelled/timed_out/interrupte
 
 ## MCP
 Use official mcp FastMCP stdio; proxy Client, never instantiate another scheduler.
-Tools agent_exec_capabilities, agent_exec_plan, agent_exec_submit, agent_exec_status, agent_exec_events, agent_exec_result, agent_exec_cancel. Bounded waits optional; return run ID promptly. No arbitrary command execution, no acceptance tool (judgment remains owner).
+Tools agent_exec_capabilities, agent_exec_plan, agent_exec_submit, agent_exec_status, agent_exec_events, agent_exec_result, agent_exec_diff, agent_exec_cancel. Bounded waits optional; return run ID promptly. No arbitrary command execution, no acceptance tool (judgment remains owner).
 Use MCP package protocol via SDK. Test initialize/tools/list/tools/call through actual stdio client as well as HTTP.
-

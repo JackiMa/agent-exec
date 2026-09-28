@@ -1,0 +1,24 @@
+# Copy to ~/.config/agent-exec/service.yaml and edit the absolute paths.
+host: 127.0.0.1
+port: 9891
+state_dir: /absolute/path/to/private/agent-exec-state
+token_file: /absolute/path/to/private/service.token
+max_concurrency: 3
+max_pending: 100
+default_timeout_seconds: 300
+max_timeout_seconds: 1800
+max_output_bytes: 4194304
+workspaces:
+  project:
+    path: /absolute/path/to/project
+    allow_write: true
+  brainstorm-scratch:
+    path: /absolute/path/to/empty/scratch
+    allow_write: false
+# Administrator-only customization. HTTP never accepts argv, env or cwd.
+# roles:
+#   codex-scout:
+#     model: gpt-5.6-luna
+#     effort: medium
+# executables:
+#   codex: /absolute/path/to/codex

@@ -8,5 +8,57 @@
     "backends": "/home/gema/.config/agent-exec/backends.yaml",
     "contract": "/home/gema/.claude/agent-collab-contract.md"
   },
-  "notes": "_legacy.py is a byte-for-byte capture of the canonical host runner. The packaged templates are compatibility assets; they are not service configuration."
+  "notes": "_legacy.py is a byte-for-byte capture of the canonical host runner. The packaged templates are compatibility assets; they are not service configuration.",
+  "integration_assets": {
+    "legacy/hooks/codex-gate.py": {
+      "origin": "/home/gema/.claude/hooks/codex-gate.py",
+      "sha256": "1f2625175cc7d998271dbbae989d3cd19001b42c99b4d0282f2d98b8c4f73075",
+      "bytes": 24863
+    },
+    "legacy/hooks/codex-route.py": {
+      "origin": "/home/gema/.claude/hooks/codex-route.py",
+      "sha256": "156798b15309b7cdd7f010ec087e63fe9f941d77de96c7f2f89ac4c8721c8651",
+      "bytes": 3150
+    },
+    "legacy/agent-collab-contract-strict.md": {
+      "origin": "/home/gema/.claude/agent-collab-contract-strict.md",
+      "sha256": "bfc65b25aa97d51e719e9eb1f3cfe45d4c532b27b1e269c4297077ca08b14737",
+      "bytes": 8249
+    },
+    "legacy/tests/smoke.sh": {
+      "origin": "/home/gema/.config/agent-exec/tests/smoke.sh",
+      "sha256": "c35b4301a85dd6aa1d835847912a16061e47d71e966317e074f5da96410b75e5",
+      "bytes": 27414
+    },
+    "legacy/tests/golden-0914/codex-critic.md": {
+      "origin": "/home/gema/.config/agent-exec/tests/golden-0914/codex-critic.md",
+      "sha256": "d6bdb5cc126b0b924c1b007dfae694fdeda0b888c8be2b4766095365a9892ec8",
+      "bytes": 1344
+    },
+    "legacy/tests/golden-0914/codex-worker.md": {
+      "origin": "/home/gema/.config/agent-exec/tests/golden-0914/codex-worker.md",
+      "sha256": "b1ae1b45800f302a7a8424c706ed4f8dc1238e7e6a3d2901cdd19376d719e820",
+      "bytes": 1268
+    },
+    "legacy/tests/golden-0914/codex-gate.md": {
+      "origin": "/home/gema/.config/agent-exec/tests/golden-0914/codex-gate.md",
+      "sha256": "4dffe99a99af7fafa76103b40d2801a18fe8eb221f2052d88cc456712d38b960",
+      "bytes": 1946
+    },
+    "legacy/tests/golden-0914/codex-deep.md": {
+      "origin": "/home/gema/.config/agent-exec/tests/golden-0914/codex-deep.md",
+      "sha256": "c9b82d53d2d210319b197f9c75a444ef8bc7979cbdbb344c12c2486f4a65a3bb",
+      "bytes": 1235
+    },
+    "legacy/tests/golden-0914/codex-operator.md": {
+      "origin": "/home/gema/.config/agent-exec/tests/golden-0914/codex-operator.md",
+      "sha256": "7d4f31454823f2fada5d39282366c0196e8d6f70ee666afb478f28437124a601",
+      "bytes": 1285
+    },
+    "legacy/tests/golden-0914/codex-scout.md": {
+      "origin": "/home/gema/.config/agent-exec/tests/golden-0914/codex-scout.md",
+      "sha256": "4b6fae2fe28b197acac408a5b69bd322a44df1c05f0c07db017a10fd83f8d503",
+      "bytes": 1323
+    }
+  }
 }

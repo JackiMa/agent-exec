@@ -1,0 +1,207 @@
+# agent-exec roles — THE table. Hand-maintained. One row = one subagent.
+#
+# Claude reads this table (the roster block it renders into CLAUDE.md, or
+# `agent-exec roles`) to know who exists and who gets a task. agent-exec reads
+# the same row to decide, with no judgement from the driver: what is delivered
+# (kind), how the job is isolated (writes), which engine at which effort (route)
+# and how the result is judged (deliverable / brief_requires / verdict_level).
+#
+# After editing: `agent-exec render` regenerates the driver files under
+# driver_dir and the roster block in roster_file; `agent-exec check` proves
+# table, drivers and roster still agree.
+#
+# Field reference
+#   kind            QUERY (deliver evidence) | CHANGE (deliver a patch) | VERIFY (deliver a verdict)
+#   writes          none (read-only sandbox) | tree (edit cwd in place) | worktree (isolated
+#                   checkout, patch comes back for review) | expdir (workspace-write: only the
+#                   directory given as CWD is writable — experiments, research notes)
+#   network         true | false (default false). Only meaningful with writes: expdir — opens the
+#                   workspace-write sandbox's network (codex sandbox_workspace_write.network_access).
+#                   none is sealed by the engine; tree/worktree run at the config default (yolo).
+#   route           ordered [{backend, effort}]; the first backend whose probe answers is used,
+#                   later ones are fallbacks and are marked FALLBACK in the digest and ledger
+#   deliverable     tokens: receipt claims evidence reproducer experiment sources verdict defects
+#   brief_requires  sections a brief MUST contain or dispatch refuses (--role path only).
+#                   Default by kind: CHANGE -> [CLAIMS, CHECKS, RECEIPT]; QUERY -> [CLAIM]; VERIFY -> []
+#                   Known tokens: CLAIMS CLAIM CHECKS RECEIPT REPRODUCER LOCKED_VERIFIER
+#   verdict_level   L0 | L1 | L2 — how hard the orchestrator verifies (recorded, not enforced yet)
+#   tier_up         role to escalate to when this one is judged wrong; feeds the misroute rate
+#   description     what Claude sees when choosing a subagent — this IS the routing logic
+#   use_for/not_for optional lists, appended to description as "Use for: … Not for: …"
+#   summary         the one-liner for the human table and the CLAUDE.md roster
+#   driver          file stem under driver_dir (null = no driver, dispatch-only)
+#   template        dispatch | gate
+#   guard           one extra sentence pinned into the driver body
+#   min_effort      optional per-role floor for the dispatch gate; null = use
+#                   dispatch_policy.min_effort below
+#   profile         legacy `--profile` name kept for compatibility. A role WITHOUT one has no old
+#                   behaviour to preserve and always renders `agent-exec dispatch --role <role>`
+#                   (the enforced path), whatever driver_command says.
+#
+# driver_command  legacy -> drivers of roles that have a profile call `codex-exec dispatch
+#                 --profile <profile>` (byte-identical to the hand-written originals); role ->
+#                 every driver calls `agent-exec dispatch --role <role>` (the row becomes
+#                 authoritative: writes forces the sandbox/worktree, brief_requires is enforced,
+#                 backends are probed). Flip this ONE value to switch the whole fleet.
+
+# dispatch_policy — when may Claude hand work to a subagent at all.
+#   min_effort        the session's own effort must be this or higher, or `agent-exec
+#                     hook-agent` (a PreToolUse hook on the Agent tool) refuses the
+#                     dispatch and tells Claude to do the work itself. A worker costs
+#                     minutes; at low effort the user wants the answer now. null = no
+#                     floor. The same value is rendered into CLAUDE.md's policy block.
+#   override_phrases  regexes; if the user's own last message matches one, the dispatch
+#                     goes through anyway — that is the "手动说明" escape. FORCE_DISPATCH
+#                     in the Agent prompt does the same. Touch ~/.codex-worker/
+#                     DISPATCH_GATE_OFF to disable the gate entirely.
+
+version: 1
+driver_dir: ~/.claude/agents
+roster_file: ~/.claude/CLAUDE.md
+driver_command: legacy
+
+dispatch_policy:
+  min_effort: high
+  # A phrase must express an INSTRUCTION to hand the work over. A mention of the
+  # machinery must not match: in this project most conversations are *about*
+  # codex, agents and dispatch, and matching those opened the gate on every one
+  # of them (found 2026-09-18). Delegation verb, not tool name.
+  override_phrases:
+    - '派(?:工(?!体系|流程|表|机制|设计|文档|策略|方式|逻辑|规则)|个|活|一个|几个|一下|给)'
+    - '派.{0,14}(去|来)(跑|做|改|查|写|看|实现)'
+    - '丢给'
+    - '交给.{0,10}(跑|做|改|处理|写|查|实现|搞)'
+    - '让.{0,12}(codex|worker|subagent|scout|deep|operator|debug|research|scientist|chore|critic)[^。？！]{0,10}(去|来|跑|做|改|查|写|实现|处理|定位)'
+    - '后台(跑|做|起|干|派)'
+    - '并行(跑|做|派|起|干)'
+    - '起(一)?(个|条)\s*(job|worker|任务|活)'
+    - '(用|走)\s*(一个)?\s*(subagent|worker|codex|agent-exec)\s*(去|来)'
+    - '\b(dispatch|spawn|launch|start)\s+(a|an|the|one|this|it\s+to)?\s*(worker|subagent|agent|job)\b'
+    - '\buse\s+(a|an|the)?\s*(worker|subagent)\b'
+    - '\b(delegate|farm\s+out|hand\s+(it|this)\s+off)\b'
+
+roles:
+  # ---------------------------------------------------------------- VERIFY
+  gate:
+    kind: VERIFY
+    writes: none
+    route: [{backend: codex-luna, effort: medium}]
+    deliverable: [verdict]
+    verdict_level: L0
+    tier_up: null
+    summary: 声明是否与磁盘一致，不判好坏
+    description: "Completion gate via Codex CLI (luna/medium) — verify that claimed code, files, tests, docs and experiment records actually exist and match the claim. Read-only, evidence only: it does not redesign, judge semantics, or review deeply. Returns PASS or RECHECK_SOL."
+    driver: codex-gate
+    template: gate
+    profile: gate
+
+  # ---------------------------------------------------------------- QUERY
+  scout:
+    kind: QUERY
+    writes: none
+    route: [{backend: codex-luna, effort: medium}]
+    deliverable: [evidence]
+    verdict_level: L1
+    tier_up: worker
+    summary: 找文件、证据、调用链
+    description: "Read-only recon via Codex CLI (luna/medium) — find evidence, files, call chains, docs. For when the deliverable is an answer, not a change; it does not solve the problem and its sandbox makes writing impossible. Vague or wide-ranging searches: TIER up to terra."
+    driver: codex-scout
+    guard: "Do not answer the question from your own reading — the cheap tier does the looking."
+    profile: scout
+
+  critic:
+    kind: QUERY
+    writes: none
+    route: [{backend: codex-sol, effort: xhigh}]
+    deliverable: [defects, evidence]
+    verdict_level: L1
+    tier_up: null
+    summary: 对抗审查，只找不修
+    description: "Adversarial review via Codex CLI (sol/xhigh) — independently hunt for defects, disprove a claim, challenge a conclusion someone else reached. Read-only. For high-risk audits and for checking work that already looks correct; it is not the one that fixes what it finds."
+    driver: codex-critic
+    guard: "Do not review anything yourself — an independent model at the highest tier does the criticising."
+    profile: critic
+
+  research:
+    kind: QUERY
+    writes: expdir              # CWD in the brief = the research/notes directory; code trees stay untouched
+    network: true
+    route: [{backend: codex-terra, effort: high}]
+    deliverable: [evidence, sources]
+    verdict_level: L1
+    tier_up: deep
+    summary: 外部资料、跨仓调研
+    description: "Research via Codex CLI (terra/high) — external material, cross-repository investigation, library and API surveys, with network access. Delivers the evidence triple plus a source index, written only into the research directory given as CWD; it changes nothing in a code tree. For questions whose answer lives outside the current repo; a lookup inside one tree is codex-scout."
+    driver: codex-research
+
+  # ---------------------------------------------------------------- CHANGE
+  chore:
+    kind: CHANGE
+    writes: tree
+    route: [{backend: codex-luna, effort: medium}]
+    deliverable: [receipt]
+    verdict_level: L1
+    tier_up: operator
+    summary: 无设计决策的机械活
+    description: "Mechanical edits via Codex CLI (luna/medium) — renames, moves, formatting, applying a spelled-out change, bulk find-and-replace, tidying records. For work with no design decision in it, where every edit is already stated; anything that needs a judgement about how goes to codex-operator."
+    driver: codex-chore
+
+  operator:
+    kind: CHANGE
+    writes: tree                # target: worktree — flip together with driver_command
+    route: [{backend: codex-luna, effort: high}]
+    deliverable: [receipt, claims]
+    verdict_level: L1
+    tier_up: worker
+    summary: 按已定方案做局部实现
+    description: "Executes a stated plan via Codex CLI (luna/high) — local implementation of an already-decided design, where the files, the approach and the acceptance checks are all given and only the doing is left. Anything still containing a design decision goes to codex-worker or codex-deep; an edit with nothing to understand goes to codex-chore."
+    driver: codex-operator
+    profile: operator
+
+  worker:
+    kind: CHANGE
+    writes: tree                # target: worktree
+    route: [{backend: codex-terra, effort: high}]
+    deliverable: [receipt, claims]
+    verdict_level: L1
+    tier_up: deep
+    summary: 有界功能，自己找路
+    description: "Owns one well-bounded result via Codex CLI (terra/high) — codebase understanding, self-directed features, technical analysis inside the repo. It may implement and debug its own way there. Running experiments is codex-scientist's job and outside-the-repo research is codex-research's; open-ended or cross-system problems go to codex-deep."
+    driver: codex-worker
+    profile: build              # historical profile name; the role is `worker`
+
+  debug:
+    kind: CHANGE
+    writes: worktree
+    route: [{backend: codex-sol, effort: high}]
+    deliverable: [receipt, claims, reproducer]
+    brief_requires: [CLAIMS, CHECKS, RECEIPT, REPRODUCER, LOCKED_VERIFIER]
+    verdict_level: L2
+    tier_up: deep
+    summary: 有失败现象时定根因并修
+    description: "Root-causes and fixes an observed failure via Codex CLI (sol/high) — a failing test, a crash, a regression, an intermittent fault. Its first deliverable is a reproducer that fails on the untouched tree; the fix comes second and is judged against it. For when there is a failure to reproduce; a problem with no failing symptom goes to codex-deep."
+    driver: codex-debug
+
+  deep:
+    kind: CHANGE
+    writes: tree                # target: worktree
+    route: [{backend: codex-sol, effort: high}]
+    deliverable: [receipt, claims]
+    verdict_level: L1
+    tier_up: null
+    summary: 架构、核心代码、跨系统
+    description: "Works the problem out alone via Codex CLI (sol/high) — designing an approach, architecture, core code, complex state/lifecycle/concurrency, and diagnosis when there is no failure to reproduce. For open, ambiguous, cross-system or causally tangled work; entanglement is the signal, not size. A failure that does reproduce goes to codex-debug."
+    driver: codex-deep
+    profile: deep
+
+  scientist:
+    kind: CHANGE
+    writes: expdir              # CWD in the brief = the experiment directory; data/checkpoints never fit a snapshot, so no worktree
+    network: true               # datasets, hubs, trackers
+    route: [{backend: codex-terra, effort: high}]
+    deliverable: [receipt, claims, experiment]
+    verdict_level: L1
+    tier_up: deep
+    summary: 设计并跑实验、训练、评估
+    description: "Designs and runs experiments via Codex CLI (terra/high) — training runs, evaluations, ablations, sweeps, with the experiment record as the deliverable. Writes only inside the experiment directory given as CWD; data and checkpoints never enter a git snapshot, so it does not run in a worktree. For work whose result is a measured number; changes to the training code itself go to codex-worker."
+    driver: codex-scientist

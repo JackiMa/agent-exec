@@ -1,0 +1,12 @@
+{
+  "captured_at": "2026-09-28",
+  "origin": "/home/gema/.local/bin/agent-exec",
+  "sha256": "e5708c0b463e7306dc6d93ac2b2838c2ee1d40d583c3c0426739388e6d067887",
+  "bytes": 112955,
+  "assets": {
+    "roles": "/home/gema/.config/agent-exec/roles.yaml",
+    "backends": "/home/gema/.config/agent-exec/backends.yaml",
+    "contract": "/home/gema/.claude/agent-collab-contract.md"
+  },
+  "notes": "_legacy.py is a byte-for-byte capture of the canonical host runner. The packaged templates are compatibility assets; they are not service configuration."
+}

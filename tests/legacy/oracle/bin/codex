@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# fake codex engine for oracle tests: --version; optional FAKE_CODEX_SLEEP; edits files in --cd; writes -o report
+[ "${1:-}" = "--version" ] && { echo "codex-cli 9.9.9-fake"; exit 0; }
+[ -n "${FAKE_CODEX_SLEEP:-}" ] && sleep "$FAKE_CODEX_SLEEP"
+OUT=""; CD="$PWD"
+while [ $# -gt 0 ]; do case "$1" in -o) OUT="$2"; shift 2;; --cd) CD="$2"; shift 2;; *) shift;; esac; done
+cat >/dev/null
+cd "$CD"
+[ -f tracked.txt ] && echo "worker-edit" >> tracked.txt
+[ -f newfile.txt ] && echo "worker-saw-untracked" >> newfile.txt
+echo "made-by-worker" > worker-added.txt
+echo '{"type":"thread.started","thread_id":"00000000-0000-4000-8000-000000000000"}'
+echo '{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"sh -c true","aggregated_output":"","exit_code":0,"status":"completed"}}'
+echo '{"type":"turn.completed","usage":{"input_tokens":100,"cached_input_tokens":0,"output_tokens":10}}'
+[ -n "$OUT" ] && echo '{"summary":"fake done","files_changed":["tracked.txt","newfile.txt","worker-added.txt"],"verification":"n/a","incomplete":[],"risks":[]}' > "$OUT"
+exit 0

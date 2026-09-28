@@ -1,0 +1,43 @@
+# agent-exec backends — the ONLY place a model id is written on this machine.
+#
+# A backend is a stable alias. Roles point at aliases, never at model ids, so
+# upgrading a model is one value here and every role follows. To A/B a new
+# model, add a `-next` alias, point one low-risk role at it, compare in the
+# ledger, then merge.
+#
+# effort_map : role effort -> what this engine actually accepts
+# sandboxes  : access shapes the engine can enforce (writes -> sandbox mapping
+#              lives in agent-exec: none=read-only, tree=default, expdir=
+#              workspace-write, worktree=isolated checkout)
+# probe      : shell command; exit 0 = backend is up. Cached 1h. Omit = assumed up.
+# price      : optional bookkeeping, $ per million tokens
+# zdr        : zero-data-retention endpoint
+
+version: 1
+backends:
+  codex-luna:
+    engine: codex
+    model: gpt-5.6-luna
+    effort_map: {low: low, medium: medium, high: high, xhigh: xhigh, max: xhigh}
+    sandboxes: [read-only, workspace-write, yolo]
+    probe: codex --version
+    price: {in_mtok_usd: null, out_mtok_usd: null}
+    zdr: false
+
+  codex-terra:
+    engine: codex
+    model: gpt-5.6-terra
+    effort_map: {low: low, medium: medium, high: high, xhigh: xhigh, max: xhigh}
+    sandboxes: [read-only, workspace-write, yolo]
+    probe: codex --version
+    price: {in_mtok_usd: null, out_mtok_usd: null}
+    zdr: false
+
+  codex-sol:
+    engine: codex
+    model: gpt-5.6-sol
+    effort_map: {low: low, medium: medium, high: high, xhigh: xhigh, max: xhigh}
+    sandboxes: [read-only, workspace-write, yolo]
+    probe: codex --version
+    price: {in_mtok_usd: null, out_mtok_usd: null}
+    zdr: false

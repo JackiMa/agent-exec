@@ -1,0 +1,12 @@
+.venv/
+.worktrees/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.env
+var/
+*.sqlite*
+*.token

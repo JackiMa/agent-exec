@@ -9,7 +9,7 @@
 Linux、Git、Python 3.10+、uv。需要调用的模型 CLI 和登录由本机提供。
 
 ```sh
-git clone git@github.com:JackiMa/agent-exec.git /home/gema/workspace/agent-exec
+git clone https://github.com/JackiMa/agent-exec.git /home/gema/workspace/agent-exec
 cd /home/gema/workspace/agent-exec
 uv sync --locked
 uv run pytest -q
@@ -75,15 +75,39 @@ HTTP 使用 `Authorization: Bearer ...`。`POST /v1/runs` 提交，`GET /v1/runs
 
 ## 其他电脑
 
-在另一台电脑建立隧道：
+局域网直连：在服务端 `/home/gema/.config/agent-exec/service.yaml` 设置 `host: 0.0.0.0`，保留 `port: 9891` 和 `token_file`。先确认没有运行或排队的任务，再执行 `systemctl --user restart agent-exec.service`。此绑定同时保留本机 MCP 的 loopback 连接；客户端使用服务端实际局域网 IP，不使用 `0.0.0.0`。非 loopback 必须有至少 32 字符令牌。
+
+另一台电脑安装本仓库的 Python 包后，通过 SSH 安全复制令牌文件并连接（将 `SERVER_LAN_IP` 和本机绝对路径替换为实际值）：
+
+```sh
+mkdir -p /absolute/private/path
+chmod 700 /absolute/private/path
+scp gema@SERVER_LAN_IP:/home/gema/.config/agent-exec/service.token /absolute/private/path/service.token
+chmod 600 /absolute/private/path/service.token
+export AGENT_EXEC_URL=http://SERVER_LAN_IP:9891
+export AGENT_EXEC_TOKEN_FILE=/absolute/private/path/service.token
+agent-exec capabilities
+agent-exec plan --workspace agent-exec --role codex-scout --goal '检查项目结构，列出事实和路径'
+```
+
+Python Client、CLI 和 MCP 都读取这两个环境变量。只安装客户端时不需要执行服务安装器，也不需要在客户端登录模型；任务由服务端已登录的 CLI 执行。仓库文件仍在服务端；第一版不做仓库同步或远端工作树上传。远端 MCP 的进程环境也需传入上述 URL 和 token 文件路径，模板见 [examples](examples/)。令牌授予当前服务配置内的任务操作权限，应只交给可信的电脑。
+
+局域网 HTTP 的令牌和任务内容不加密，适用于可信网络；跨不可信网络使用 TLS 反向代理或 SSH 隧道。端口须能通过服务端防火墙，安装器不自动修改防火墙或路由器端口映射。可在另一台电脑运行 `curl --noproxy '*' http://SERVER_LAN_IP:9891/healthz` 检查网络，再运行 `agent-exec capabilities` 验证令牌；只有后者能访问任务 API。
+
+使用 UFW 且入站被拦时，在服务端终端以管理员权限放行客户端网段。将示例 `192.168.1.0/24` 替换为实际可信网段，不必向所有来源开放：
+
+```sh
+sudo ufw allow from 192.168.1.0/24 to any port 9891 proto tcp comment 'agent-exec trusted LAN'
+sudo ufw status
+```
+
+SSH 隧道仍可选：
 
 ```sh
 ssh -N -L 9891:127.0.0.1:9891 gema@YOUR_HOST
 ```
 
-把 token 通过 SSH 安全复制到那台电脑的私有 token 文件，设置 `AGENT_EXEC_URL=http://127.0.0.1:9891` 和 `AGENT_EXEC_TOKEN_FILE=/absolute/private/path/service.token`。Python Client、CLI 和 MCP 使用同一接口。仓库文件仍在服务端；第一版不做仓库同步或远端工作树上传。
-
-局域网直连可以在服务配置里显式修改 `host` 并由用户配置 TLS 反向代理；非 loopback 必须有至少 32 字符令牌。裸 HTTP 令牌不加密，默认 SSH 隧道更直接。不会替用户修改防火墙或暴露公网端口。
+使用隧道时将 `AGENT_EXEC_URL` 改为 `http://127.0.0.1:9891`，继续使用私有 token 文件。
 
 ## 宿主接入
 

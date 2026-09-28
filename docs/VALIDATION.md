@@ -17,7 +17,8 @@
 | 新 Codex 宿主 → MCP → 服务 → Codex worker | passed | run `00496cc537154562bbee2028f6f0890c`，实际调用 submit/status/result，返回 `AGENT_EXEC_HOST_DELEGATION_OK` |
 | 写入补丁独立复验 | passed | SHA256 + 独立 clone 中 `git apply --check`、实际应用和逐字节核验 |
 | Brainstorm Council 完整链路 | passed，fixture 模型 | 原产品 API → HTTP → 7 次执行 → 独立/互评/主席 → HUMAN/AGENT 文件 |
-| 用户服务 | active | `127.0.0.1:9891`，systemd user unit，当前用户 `Linger=yes` |
+| 用户服务 | active | 用户选择局域网直连后改为 `0.0.0.0:9891`，systemd user unit，当前用户 `Linger=yes` |
+| 局域网监听和认证 | passed，本机发起请求 | loopback 和两个 LAN IPv4 均返回同一服务实例；无令牌/错误令牌均 401；有效令牌的 health/capabilities/plan 均 200 |
 
 64 项 pytest 在两种 Python 上各有一条上游 Starlette TestClient/httpx deprecation warning，不影响结果。没有把本地 fixture 或工作进程自报结果当成真实模型验证。
 
@@ -32,7 +33,8 @@
 - 初次 Codex 验证暴露“对不存在的 MCP 项写 enabled=false 会形成无 transport 的无效配置”，已改成仅禁用已存在项并加入回归测试。初次 Grok 验证暴露其实际 JSON 使用 `text/sessionId/stopReason`，已支持并加入回归测试。旧失败记录保留，没有涂改成成功。
 - 初次安装暴露本机 systemd 的 WorkingDirectory 不接受带引号的写法，安装器已修正并加入安装检查；源入口替换前的原始备份仍在。
 - 真实宿主测试发现未标注的 MCP 查询工具会进入 approval 路径，在 `approval_policy=never` 下失败。现在准确标记读写属性，并使用官方支持的逐工具 `approval_mode="approve"` 授权 submit/cancel；已通过新的非交互 Codex 会话验证。全局批准策略未放宽。
-- 尚未从第二台物理 PC 连入验收；已提供同一认证 API、Client 和 SSH 隧道方法。实际跨机网络、SSH 账号与防火墙仍取决于用户环境。
+- 已按用户选择启用局域网直连，并从本机通过 LAN 地址验证认证 API；尚未从第二台物理 PC 连入验收。README 提供直连的 Client/MCP 环境变量、令牌复制和连通检查，SSH 隧道仍可选；实际跨机路由与防火墙尚未独立验证。
+- 安装主机的 UFW 已启用，默认入站 DROP；当前会话没有无需密码的 sudo 权限，无法读取现有用户规则或添加放行规则。README 提供管理员可执行的网段限定命令。本机 LAN 地址请求不会证明外部流量已通过 UFW。
 - Brainstorm 原生产服务和 dirty checkout 未修改或重启。注入 adapter 的临时 Council 链路通过；三家真实模型联合 Council 未通过验收（Claude 账号受限）。SearchProvider、TODO 自动执行和原生 child-thread/fork/message 语义不在本版实现内。
 - 原 legacy 命令保留历史默认权限；新服务的 worktree/权限默认不追溯覆盖它。服务为同 UID 可信使用，不提供恶意多租户隔离、硬 token/cost 预算或分布式任务调度。
 
@@ -43,6 +45,7 @@
 - 最终测试日志：`/home/gema/.local/state/agent-exec/verification/final/pytest-py313.log`、`/home/gema/.local/state/agent-exec/verification/final/pytest-py310.log`。
 - 旧 shell 套件：`/home/gema/.local/state/agent-exec/verification/final/legacy-smoke.log`。
 - 服务实例/源码摘要：`/home/gema/.local/state/agent-exec/verification/final/service-health.json`。
+- 局域网监听/认证探测：`/home/gema/.local/state/agent-exec/verification/final/lan-access.json`（实际 IP 仅保存在本机证据中）。
 - Codex 宿主委派全过程：`/home/gema/.local/state/agent-exec/verification/final/codex-host-delegation.jsonl`。
 - 真实 writer 独立验收：`/home/gema/.local/state/agent-exec/verification/real-writer-report.json`。
 - 补丁：`/home/gema/.local/state/agent-exec/verification/real-writer.patch`。

@@ -7,6 +7,6 @@
 5. Split task kind, capability, provider/model and permission policy; retain legacy role aliases.
 6. Add explicit workspace registration and isolated writing worktrees. Do not equate prompt instructions or a same-user process with a security sandbox.
 7. Provide tested host adapters for brainstorm, Claude and Codex; document native-agent features that remain host-owned.
-8. Install a user service, exercise a real read-only provider job, verify HTTP/MCP/client behavior and push a private GitHub repository unless the user requests public.
+8. Install a user service, exercise a real read-only provider job, verify HTTP/MCP/client behavior and push the GitHub repository. The user selected public visibility and direct authenticated LAN access; enable the installed service's LAN bind while keeping loopback as the generic installer default.
 
 Review: consult GPT Pro using a redacted architecture/evidence packet; incorporate correctness findings.

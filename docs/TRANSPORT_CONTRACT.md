@@ -38,7 +38,7 @@ POST /v1/runs (Idempotency-Key header) -> 202
 POST /v1/plan
 GET /v1/runs/{id}, /events?after=&limit=, /logs?stream=&offset=&limit=, /result, /diff
 POST /v1/runs/{id}/cancel, /retry, /verdict {accepted,reason,evidence}
-Server CLI: agent-exec serve [--config PATH] (agent-execd same main). Refuse non-loopback if token absent/too short. Prefer TLS/SSH for remote; no automatic firewall or public exposure.
+Server CLI: agent-exec serve [--config PATH] (agent-execd same main). Refuse non-loopback if token absent/too short. Explicit host=0.0.0.0 supports direct trusted-LAN access and existing loopback clients; clients use the server LAN IP. Use TLS/SSH outside trusted networks. No automatic firewall or router port forwarding.
 
 ## Client and CLI
 Client(base_url=None, token=None, token_file=None, timeout=...) defaults AGENT_EXEC_URL http://127.0.0.1:9891 and AGENT_EXEC_TOKEN or AGENT_EXEC_TOKEN_FILE or ~/.config/agent-exec/service.token. Use httpx trust_env=False for loopback/private API to avoid leaking token to configured global proxies. Client errors useful but redacted.

@@ -1,4 +1,6 @@
 # Copy to ~/.config/agent-exec/service.yaml and edit the absolute paths.
+# Use 0.0.0.0 for direct trusted-LAN access (requires a token of >=32 characters).
+# Clients use the server's LAN IP; local MCP can continue using 127.0.0.1.
 host: 127.0.0.1
 port: 9891
 state_dir: /absolute/path/to/private/agent-exec-state

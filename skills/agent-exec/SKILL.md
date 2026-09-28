@@ -71,3 +71,9 @@ Use the supplied [Codex template](../../examples/codex-mcp.toml) or
 [Claude template](../../examples/claude-mcp.json). Both start the `agent-exec mcp` stdio proxy and reference a token
 file with `AGENT_EXEC_TOKEN_FILE`; neither contains a token nor replaces the
 Codex or Claude executable.
+
+Codex headless delegation needs the template's explicit per-tool approval for
+submit/cancel. Query tools are annotated read-only. If host policy rejects a
+mutation, report that policy result; do not relabel the tool as read-only or
+disable the global sandbox. The local installed configuration grants only this
+service's submit/cancel operations; the service still checks its role/workspace registry.

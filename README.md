@@ -94,6 +94,8 @@ claude mcp add --transport stdio --scope user agent_exec -- /home/gema/workspace
 
 MCP 是 HTTP 代理，不再启动一套调度器。宿主可调用 `agent_exec_capabilities/plan/submit/status/events/result/diff/cancel`。模板在 [examples](examples/)，调度方法在 [Skill](skills/agent-exec/SKILL.md)。新宿主会话会发现挂载的 Skill/MCP；已打开会话是否动态刷新取决于宿主。
 
+Codex 非交互会话还需要逐工具授权。示例 TOML 将默认设为 `writes`，并只对 `agent_exec_submit`、`agent_exec_cancel` 设置 `approval_mode="approve"`；这明确允许宿主在服务已注册的权限范围里自主派工/取消。删除这两项即可保留逐次批准。查询工具带准确的 `readOnlyHint`，提交工具仍标为有副作用，取消工具标为破坏性。不要把全局 sandbox 改成 bypass 来解决 MCP 批准问题。
+
 Brainstorm 的 [完成接口适配器](src/agent_exec/integrations/brainstorm.py) 可注入 `api.start_council(..., providers=...)`，例子见 [Council](examples/brainstorm_council.py)。Council 临时 cwd 使用显式 `prompt_only=True`，在已注册空工作目录运行完整提示词。Brainstorm 自己仍拥有业务事件、阶段和来源核验；该适配器不接管 research 搜索、不自动执行 TODO。
 
 外部服务接管执行排队和进程生命周期；宿主原生的 child thread、上下文继承、消息注入、UI 和 session resume 并未被模拟。本机 Codex npm 安装是 native binary，优先使用公开的 `codex exec`/MCP 接口。独立源码 fork 的接入方式和限制见 [设计](docs/ARCHITECTURE.md)。

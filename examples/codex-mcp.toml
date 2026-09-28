@@ -3,7 +3,16 @@
 [mcp_servers.agent_exec]
 command = "/absolute/path/to/agent-exec/.venv/bin/agent-exec"
 args = ["mcp"]
+default_tools_approval_mode = "writes"
 
 [mcp_servers.agent_exec.env]
 AGENT_EXEC_URL = "http://127.0.0.1:9891"
 AGENT_EXEC_TOKEN_FILE = "/absolute/path/to/agent-exec/service.token"
+
+# Explicitly authorize autonomous execution/cancellation inside the service's
+# registered workspaces. Remove these two overrides to retain approval prompts.
+[mcp_servers.agent_exec.tools.agent_exec_submit]
+approval_mode = "approve"
+
+[mcp_servers.agent_exec.tools.agent_exec_cancel]
+approval_mode = "approve"

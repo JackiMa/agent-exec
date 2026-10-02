@@ -117,7 +117,7 @@ def test_default_capacity_reserves_ten_scout_slots_per_depth(tmp_path):
         workspaces={"fixture": Workspace(workspace, True)},
         roles={"codex-scout": Role("codex", "fixture-scout", description="SCOUT DESCRIPTION MARKER")},
         executables={"codex": str(fake_codex(tmp_path)), "claude": "claude", "grok": "grok"},
-        max_concurrency=4,
+        max_concurrency=10,
         max_scout_concurrency=10,
         max_scout_children=10,
         default_timeout_seconds=20,
@@ -127,7 +127,7 @@ def test_default_capacity_reserves_ten_scout_slots_per_depth(tmp_path):
     service = Service(settings)
     service.start()
     try:
-        roots = [running_parent(service, f"hold root {number}") for number in range(4)]
+        roots = [running_parent(service, f"hold root {number}") for number in range(10)]
         children = [service.submit_scout(roots[0]["id"], {"goal": f"hold scout {number}"}) for number in range(10)]
         with pytest.raises(ServiceError, match="quota"):
             service.submit_scout(roots[0]["id"], {"goal": "hold scout over quota"})
@@ -146,10 +146,10 @@ def test_default_capacity_reserves_ten_scout_slots_per_depth(tmp_path):
             return running if len(running) == 10 else None
 
         second_depth = until(second_depth_ready, timeout=15)
-        assert len([run for run in roots if prepared(service, run["id"])]) == 4
+        assert len([run for run in roots if prepared(service, run["id"])]) == 10
         assert len(first_depth) == 10
         assert len(second_depth) == 10
-        assert service.capabilities()["limits"]["max_total_concurrency"] == 24
+        assert service.capabilities()["limits"]["max_total_concurrency"] == 30
 
         for root in roots:
             service.cancel(root["id"])

@@ -94,4 +94,4 @@ mutation, report that policy result; do not relabel the tool as read-only or
 disable the global sandbox. The local installed configuration grants only this
 service's submit/cancel operations; the service still checks its role/workspace registry.
 
-For Codex integration and native-thread differences, read [Codex integration](../../docs/CODEX_INTEGRATION.md). The service defaults to 24 total execution slots (4 root + 10 per scout depth) and up to 10 lifetime direct scouts per parent. Service run IDs are not native Codex agent IDs.
+For Codex integration and native-thread differences, read [Codex integration](../../docs/CODEX_INTEGRATION.md). The service defaults to 30 total execution slots (10 root + 10 per scout depth) and up to 10 lifetime direct scouts per parent. Service run IDs are not native Codex agent IDs.

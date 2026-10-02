@@ -5,7 +5,7 @@ host: 127.0.0.1
 port: 9891
 state_dir: /absolute/path/to/private/agent-exec-state
 token_file: /absolute/path/to/private/service.token
-max_concurrency: 4
+max_concurrency: 10
 max_scout_depth: 2
 max_scout_concurrency: 10
 max_scout_children: 10

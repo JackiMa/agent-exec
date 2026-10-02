@@ -48,7 +48,7 @@ class Settings:
     token_file: Path = field(default_factory=lambda: Path.home() / ".config/agent-exec/service.token")
     host: str = "127.0.0.1"
     port: int = 9891
-    max_concurrency: int = 4
+    max_concurrency: int = 10
     max_scout_depth: int = 2
     max_scout_concurrency: int = 10
     max_scout_children: int = 10

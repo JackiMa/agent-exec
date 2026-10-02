@@ -11,7 +11,7 @@
 ## 决策
 
 - 角色由服务默认注册表管理；debug 按已说明的 `gpt-6.1-sol / xhigh` 实现。
-- 不把全服务限制为十个进程：4 个顶层槽位、每层 10 个 scout 槽位，共 24。
+- 不把全服务限制为十个进程：10 个顶层槽位、每层 10 个 scout 槽位，共 30。
   各层容量由所有父任务共享，单父任务累计直接 child 配额为 10。
 - Codex MCP 的 env_vars 是显式转发列表；委派 MCP 转发 scoped credential
   所需环境，并固定 child 标记，缺少凭证时拒绝回退到 owner token。
@@ -32,7 +32,7 @@
 ## 当前验证与下一步
 
 - 完整 pytest：84 passed，包含真实 TCP MCP fixture；legacy smoke 80 passed。
-- 4/10/10 容量、24 个任务终态清理、配额与 scoped auth 均由测试覆盖。
+- 10/10/10 容量、30 个任务终态清理、配额与 scoped auth 均由测试覆盖。
 - 服务已重载；API instance/source SHA256/角色/限制核对通过。
 - 真实 stdio MCP → Codex scout → scoped MCP child 已通过；gpt-6.1-sol/high
   reviewer 真实模型文本 smoke 通过。原始证据保留在 Git 外。

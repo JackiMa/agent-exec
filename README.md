@@ -78,7 +78,7 @@ HTTP 使用 `Authorization: Bearer ...`。`POST /v1/runs` 提交，`GET /v1/runs
 
 Codex 子任务可以继续派 scout：每次运行按需挂载 `agent_exec_scout` MCP；CLI `agent-exec task submit --role scout` 也使用同一受限接口。只允许派只读 scout，继承父任务实际工作目录及截止时间。默认最多两层 scout、每个父任务累计最多十个直接 scout；父任务完成、超时或取消会取消未完成的后代。子任务只能查看/取消自己的直接 scout，不能调用主 API、修改验收或派 worker/debug/reviewer/gate。Claude/Grok 继续为禁用工具的文本模式。
 
-`max_concurrency` 限制顶层执行（默认 4）；每个 scout 深度另有 `max_scout_concurrency` 个槽位（默认 10），同一个父任务的十个 scout 可同时运行；多个父任务共享各深度池，容量满时排队。独立的深度池避免父任务占满容量后等待 scout 卡住。默认总进程上限为 `4 + 2 × 10 = 24`，总排队上限仍由 `max_pending` 限制；可通过 `max_scout_depth: 0` 关闭嵌套派工。记录的 `parent_run_id/root_run_id/depth` 用于追踪任务树。旧根命令/legacy 流程保持原配置与权限，不自动迁移到此机制。
+`max_concurrency` 限制顶层执行（默认 10）；每个 scout 深度另有 `max_scout_concurrency` 个槽位（默认 10），同一个父任务的十个 scout 可同时运行；多个父任务共享各深度池，容量满时排队。独立的深度池避免父任务占满容量后等待 scout 卡住。默认总进程上限为 `10 + 2 × 10 = 30`，总排队上限仍由 `max_pending` 限制；可通过 `max_scout_depth: 0` 关闭嵌套派工。记录的 `parent_run_id/root_run_id/depth` 用于追踪任务树。旧根命令/legacy 流程保持原配置与权限，不自动迁移到此机制。
 
 ## 其他电脑
 

@@ -62,16 +62,23 @@ HTTP 使用 `Authorization: Bearer ...`。`POST /v1/runs` 提交，`GET /v1/runs
 
 | 角色 | 默认模型/引擎 | 用途 | 执行权限 |
 |---|---|---|---|
-| codex-scout | Codex / gpt-5.6-luna / medium | 只读取证 | read-only |
-| codex-reviewer | Codex / gpt-5.6-terra / high | 独立复核 | read-only |
-| codex-worker | Codex / gpt-5.6-terra / high | 已定方案的实现 | 独立 worktree |
-| codex-debug | Codex / gpt-5.6-sol / high | 复杂复现与修复 | 独立 worktree |
+| codex-scout | Codex / gpt-6-luna / medium | 只读取证 | read-only |
+| codex-gate | Codex / gpt-6-luna / medium | 检查完成声明与已保存证据，PASS / RECHECK_SOL | read-only |
+| codex-reviewer | Codex / gpt-6.1-sol / high | 独立缺陷审查与复核 | read-only |
+| codex-worker | Codex / gpt-6.1-sol / medium | 已定方案的实现 | 独立 worktree |
+| codex-debug | Codex / gpt-6.1-sol / xhigh | 复杂复现与修复 | 独立 worktree |
 | claude-chat | 本机 Claude 默认模型 | 纯文本讨论 | 禁用工具和自定义配置 |
 | grok-chat | 本机 Grok 默认模型 | 纯文本讨论 | 禁用内置工具、子 agent 和 web；拒绝工具权限 |
 
 模型可在本机 YAML 中覆盖，不等同于账号一定有访问权限。服务支持旧角色名的显式别名；新的写入角色统一要求 workspace 注册允许写入、主 checkout 干净，且在独立 worktree 执行。脏目录会被拒绝并保留；需要旧的 dirty snapshot 流程时显式使用 legacy 命令。
 
 服务冻结最终 patch（包含未跟踪文件），提供 SHA256 和无损 Base64，保留 worktree 给 owner 复核。不会自动提交、合并或删除它。`succeeded` 表示执行和最终响应成功，`acceptance=pending` 仍要求宿主核验；API caller 写入的 verdict 是判断记录，不是独立证明。
+
+`gate` 是 `codex-gate` 的别名，`critic` 仍映射到 reviewer。gate 只核对完成声明与文件、保存的测试日志及实验记录，不重跑测试、构建、服务，也不做深入设计审查；直接矛盾返回 `RECHECK_SOL`，不确定项另行报告。角色描述会实际写入每次任务的提示词。
+
+Codex 子任务可以继续派 scout：每次运行按需挂载 `agent_exec_scout` MCP；CLI `agent-exec task submit --role scout` 也使用同一受限接口。只允许派只读 scout，继承父任务实际工作目录及截止时间。默认最多两层 scout、每个父任务累计最多十个直接 scout；父任务完成、超时或取消会取消未完成的后代。子任务只能查看/取消自己的直接 scout，不能调用主 API、修改验收或派 worker/debug/reviewer/gate。Claude/Grok 继续为禁用工具的文本模式。
+
+`max_concurrency` 限制顶层执行（默认 4）；每个 scout 深度另有 `max_scout_concurrency` 个槽位（默认 10），同一个父任务的十个 scout 可同时运行；多个父任务共享各深度池，容量满时排队。独立的深度池避免父任务占满容量后等待 scout 卡住。默认总进程上限为 `4 + 2 × 10 = 24`，总排队上限仍由 `max_pending` 限制；可通过 `max_scout_depth: 0` 关闭嵌套派工。记录的 `parent_run_id/root_run_id/depth` 用于追踪任务树。旧根命令/legacy 流程保持原配置与权限，不自动迁移到此机制。
 
 ## 其他电脑
 
@@ -141,3 +148,5 @@ uv run pytest -q
 认证后的 `/v1/health` 返回服务实例 ID 和启动时的 Python 源码摘要，run 也记录执行它的实例和源码摘要，可区分磁盘更新与进程已加载的版本。
 
 这是同一用户下的可信本机执行服务，不是面向恶意租户的多用户沙箱。worktree 隔离改动，Codex sandbox 限制工具访问；不能阻止具有相同 OS 身份的恶意进程读取凭证或绕过控制面。`command` provider 仅供管理员配置的可信命令/fixture，明确没有沙箱保证。服务版本一不提供强隔离、多租户配额或分布式调度。
+
+Codex 的接入方式、原生子代理与外部 run 的区别，以及旧 Haiku 驱动的代价，见 [Codex 接入说明](docs/CODEX_INTEGRATION.md)。

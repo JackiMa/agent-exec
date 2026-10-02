@@ -28,7 +28,7 @@ All methods synchronous; run execution occurs in service-owned threads. Use thre
 - cancel(run_id) -> run dict; queued becomes cancelled, running sets cancel_requested then process-group cleanup; terminal idempotent.
 - retry(run_id) -> new run dict (terminal only); explicit, never automatic. Record retry_of. Changed role, executable or workspace mapping requires a new submission. Writing retries retain the original base revision.
 - verdict(run_id, accepted: bool, reason: str, evidence: list[str]) -> run dict. Only succeeded can be accepted, failed can be rejected. accepted requires nonempty reason and evidence. No claim of independent identity: API client owns judgment.
-Run: id, status, acceptance (pending/accepted/rejected), role, workspace, created_at, updated_at, started_at, finished_at, exit_code, error, cancel_requested, caller_task_id, retry_of, execution_cwd, base_revision, provider_session_id, evidence/reason. States queued/running/succeeded/failed/cancelled/timed_out/interrupted. IDs opaque 32 lowercase hex.
+Run: id, status, acceptance (pending/accepted/rejected), role, workspace, created_at, updated_at, started_at, finished_at, exit_code, error, cancel_requested, caller_task_id, retry_of, execution_cwd, base_revision, provider_session_id, evidence/reason, parent_run_id, root_run_id, depth, deadline_at. States queued/running/succeeded/failed/cancelled/timed_out/interrupted. IDs opaque 32 lowercase hex.
 No arbitrary argv/env/path in requests; only local config can define executable. No external auto-merge/adopt/delete API.
 
 ## HTTP
@@ -38,6 +38,7 @@ POST /v1/runs (Idempotency-Key header) -> 202
 POST /v1/plan
 GET /v1/runs/{id}, /events?after=&limit=, /logs?stream=&offset=&limit=, /result, /diff
 POST /v1/runs/{id}/cancel, /retry, /verdict {accepted,reason,evidence}
+Parent-scoped `/v1/scouts` uses a separate short-lived credential issued to an active Codex run (never the owner bearer token). It exposes health/capabilities/plan, POST/GET runs, and direct-child status/events/logs/result/cancel. It only admits Codex read-only `codex-scout` (aliases scout/research), in the parent's registered workspace and actual execution cwd. No diff/verdict/retry endpoints. Tokens are in-memory, revoked when parent finishes/cancels, and absent from persisted run records. Idempotency is scoped to parent. Default max_scout_depth=2, max_scout_children=10 lifetime direct children per parent; ten additional shared execution slots per scout depth via max_scout_concurrency=10; a single parent can run ten scouts concurrently when that depth pool is available. Descendants inherit the parent's absolute deadline; finish/cancel/timeout requests cancellation of descendants. Process cleanup is asynchronous: a parent terminal state does not prove all descendants have exited; wait for their terminal states before treating cleanup as complete. Root max_concurrency=4 means default total execution ceiling=24. Global max_pending still applies; no guarantee of admission when the queue is full.
 Server CLI: agent-exec serve [--config PATH] (agent-execd same main). Refuse non-loopback if token absent/too short. Explicit host=0.0.0.0 supports direct trusted-LAN access and existing loopback clients; clients use the server LAN IP. Use TLS/SSH outside trusted networks. No automatic firewall or router port forwarding.
 
 ## Client and CLI
@@ -52,3 +53,4 @@ New task submit --wait returns nonzero for failed/cancelled/timed_out/interrupte
 Use official mcp FastMCP stdio; proxy Client, never instantiate another scheduler.
 Tools agent_exec_capabilities, agent_exec_plan, agent_exec_submit, agent_exec_status, agent_exec_events, agent_exec_result, agent_exec_diff, agent_exec_cancel. Bounded waits optional; return run ID promptly. No arbitrary command execution, no acceptance tool (judgment remains owner).
 Use MCP package protocol via SDK. Test initialize/tools/list/tools/call through actual stdio client as well as HTTP.
+Child Codex per-run configuration mounts `agent_exec_scout` using the same stdio proxy and scoped environment credential. The child tool list omits diff. Native multi_agent remains disabled; server-side scope checks are authoritative for role/run access. CLI/Python Client automatically use `/v1/scouts` when AGENT_EXEC_CHILD=1 and ignore owner token arguments/files/environment.

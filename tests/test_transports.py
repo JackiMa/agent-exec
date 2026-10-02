@@ -195,7 +195,7 @@ def test_wait_returns_terminal_without_cancelling_on_caller_timeout() -> None:
     assert requests == ["GET"]
 
 
-def test_child_can_inspect_but_cannot_submit_or_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_child_without_scoped_credential_cannot_use_owner_token(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -203,13 +203,46 @@ def test_child_can_inspect_but_cannot_submit_or_retry(monkeypatch: pytest.Monkey
         return httpx.Response(200, json={"id": "run", "status": "succeeded"})
 
     monkeypatch.setenv("AGENT_EXEC_CHILD", "1")
+    monkeypatch.delenv("AGENT_EXEC_SCOUT_TOKEN", raising=False)
     with Client(token=TOKEN, transport=httpx.MockTransport(handler)) as client:
-        assert client.get("run")["status"] == "succeeded"
+        assert client.token is None
+        with pytest.raises(ClientError, match="no scout delegation credential"):
+            client.get("run")
         with pytest.raises(ClientError, match="cannot submit"):
             client.submit({"workspace": "w", "goal": "g"})
         with pytest.raises(ClientError, match="cannot retry"):
             client.retry("run")
-    assert calls == ["GET"]
+    assert calls == []
+
+
+def test_authorized_child_routes_only_scout_requests_and_never_owner_credentials(monkeypatch, tmp_path):
+    seen = []
+    token_file = tmp_path / "owner.token"
+    token_file.write_text("owner-file-token-must-not-be-used")
+    monkeypatch.setenv("AGENT_EXEC_CHILD", "1")
+    monkeypatch.setenv("AGENT_EXEC_SCOUT_TOKEN", "scoped-scout-token")
+    monkeypatch.setenv("AGENT_EXEC_TOKEN", "owner-env-token-must-not-be-used")
+
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(200, json={"id": "scout", "status": "succeeded"})
+
+    with Client(token="owner-explicit-token", token_file=token_file, transport=httpx.MockTransport(handler)) as client:
+        client.submit({"workspace": "w", "goal": "inspect", "role": "scout"})
+        client.get("scout")
+        client.result("scout")
+        client.cancel("scout")
+        for role in ("worker", "debug", "gate", "codex-reviewer"):
+            with pytest.raises(ClientError, match="only scouts"):
+                client.submit({"workspace": "w", "goal": "g", "role": role})
+        with pytest.raises(ClientError, match="cannot retry"):
+            client.retry("scout")
+        with pytest.raises(ClientError):
+            client.verdict("scout", True, "pretend accepted", ["fake"])
+        with pytest.raises(ClientError):
+            client.diff("scout")
+    assert [r.url.path for r in seen] == ["/v1/scouts/runs", "/v1/scouts/runs/scout", "/v1/scouts/runs/scout/result", "/v1/scouts/runs/scout/cancel"]
+    assert all(r.headers["authorization"] == "Bearer scoped-scout-token" for r in seen)
 
 
 def test_cli_wait_returns_nonzero_for_failed_run(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:

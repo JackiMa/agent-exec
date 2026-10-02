@@ -27,6 +27,9 @@ class ClientError(RuntimeError):
 
 
 def _load_token(token: str | None, token_file: str | Path | None) -> str | None:
+    if os.environ.get("AGENT_EXEC_CHILD") == "1":
+        # Never fall back to the owner's token file inside a provider process.
+        return os.environ.get("AGENT_EXEC_SCOUT_TOKEN") or None
     if token is not None:
         return token.strip() or None
     environment_token = os.environ.get("AGENT_EXEC_TOKEN")
@@ -60,6 +63,7 @@ class Client:
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         self.base_url = (base_url or os.environ.get("AGENT_EXEC_URL") or DEFAULT_URL).rstrip("/")
+        self.child_mode = os.environ.get("AGENT_EXEC_CHILD") == "1"
         self.token = _load_token(token, token_file)
         headers = {"Accept": "application/json"}
         if self.token:
@@ -88,6 +92,10 @@ class Client:
         return value
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
+        if self.child_mode:
+            if not self.token:
+                raise ClientError("Provider child has no scout delegation credential", status_code=403)
+            path = path.replace("/v1/", "/v1/scouts/", 1)
         try:
             response = self._http.request(method, path, **kwargs)
         except httpx.HTTPError as exc:
@@ -119,7 +127,11 @@ class Client:
         payload: Mapping[str, Any],
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
-        _reject_child_execution("submit")
+        if self.child_mode:
+            if not self.token:
+                raise ClientError("Provider children cannot submit without a scout delegation credential", status_code=403)
+            if payload.get("role", "codex-scout") not in {"codex-scout", "scout", "research"}:
+                raise ClientError("Provider children may submit only scouts", status_code=403)
         headers = {"Idempotency-Key": idempotency_key} if idempotency_key else None
         return self._request("POST", "/v1/runs", json=dict(payload), headers=headers)
 
@@ -156,6 +168,7 @@ class Client:
         return self._request("GET", f"/v1/runs/{run_id}/result")
 
     def diff(self, run_id: str) -> dict[str, Any]:
+        _reject_child_execution("export writing diffs for")
         return self._request("GET", f"/v1/runs/{run_id}/diff")
 
     def cancel(self, run_id: str) -> dict[str, Any]:
@@ -172,6 +185,7 @@ class Client:
         reason: str,
         evidence: list[str],
     ) -> dict[str, Any]:
+        _reject_child_execution("accept or reject")
         return self._request(
             "POST",
             f"/v1/runs/{run_id}/verdict",

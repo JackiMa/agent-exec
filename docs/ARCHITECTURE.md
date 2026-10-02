@@ -24,7 +24,9 @@ Owner 留在宿主，拥有问题定义、跨模块设计、预算、集成和�
 
 模型/effort、权限、任务用途分别配置。新服务保留旧别名，默认写角色收紧为 worktree。对两个几分钟的小问题没有必要排两个长 agent；低/中 effort 默认 owner 自己做。高 effort 仅把可独立推进的切片派出，不能把总体架构或最后“是否完成”交给子任务。先写出 brief 的范围、排除项、完成条件、检查命令，再选择最小能胜任的角色。
 
-Leaf worker 禁止再派工。服务给子进程设置 `AGENT_EXEC_CHILD=1`，Client 拒绝子进程 submit/retry，并在 Codex per-run 配置里关闭 multi_agent 与 agent_exec MCP。这是操作规约，不能对抗同 UID 恶意代码。第一版不引入自动扩展 DAG、模型路由模型、agent 辩论或自动纠错循环。
+Codex worker 可以通过 `agent_exec_scout` MCP 或 CLI 继续派只读 scout；scout 也可以在深度限制内继续派 scout。服务注入 `AGENT_EXEC_CHILD=1` 和短期父任务凭证，Client 不读取主令牌文件，改走 `/v1/scouts`。服务端校验角色必须是 Codex/read-only 的 `codex-scout`、workspace 与父任务相同；执行 cwd 由服务选择为父任务实际工作目录。子任务只能操作直接 scout，不提供验收、写入补丁或 retry 接口。配置默认两层、每父任务累计四个直接 scout；取消、完成、超时级联取消后代并撤销凭证。原生 multi_agent 及主 `agent_exec` MCP 仍在 provider 中关闭。这是可信同 UID 的操作控制，不能对抗读取主凭证的恶意同 UID 代码。
+
+顶层并发默认三，scout 每个深度独立一个执行槽位，总上限默认五。分深度预留容量使一个等待 scout 的父任务不会阻塞下一层；排队仍有全局上限，超过限额明确返回 429。服务不自动拆任务、扩展 DAG、路由模型或重跑失败任务。角色描述实际注入提示词；gate 是独立的廉价证据检查角色，reviewer 负责深入缺陷复核。
 
 ## 持久性与资源
 

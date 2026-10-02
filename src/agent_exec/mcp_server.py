@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 from typing import Any, Callable
 
@@ -123,9 +124,11 @@ def build_mcp(
     def result(run_id: str) -> dict[str, Any]:
         return call("result", run_id)
 
-    @server.tool(name="agent_exec_diff", description="Read the frozen patch of a finished writing run; does not apply it.", annotations=READ_ONLY)
     def diff(run_id: str) -> dict[str, Any]:
         return call("diff", run_id)
+
+    if os.environ.get("AGENT_EXEC_CHILD") != "1":
+        server.add_tool(diff, name="agent_exec_diff", description="Read the frozen patch of a finished writing run; does not apply it.", annotations=READ_ONLY)
 
     @server.tool(
         name="agent_exec_cancel",

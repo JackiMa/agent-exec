@@ -22,3 +22,4 @@ packages = ["src/agent_exec"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["network: requires local TCP socket permissions"]

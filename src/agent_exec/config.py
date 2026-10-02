@@ -29,16 +29,17 @@ class Workspace:
 
 def default_roles() -> dict[str, Role]:
     return {
-        "codex-scout": Role("codex", "gpt-5.6-luna", description="Read sources and return evidence; no architecture decisions."),
-        "codex-reviewer": Role("codex", "gpt-5.6-terra", "high", kind="review", description="Independently reproduce defects and check evidence."),
-        "codex-worker": Role("codex", "gpt-5.6-terra", "high", "worktree", "implement", "Implement a settled, scoped change in an isolated checkout."),
-        "codex-debug": Role("codex", "gpt-5.6-sol", "high", "worktree", "debug", "Investigate and repair a difficult failure with a reproducer."),
+        "codex-scout": Role("codex", "gpt-6-luna", description="Read sources and return evidence; no architecture decisions."),
+        "codex-reviewer": Role("codex", "gpt-6.1-sol", "high", kind="review", description="Independently reproduce defects and check evidence."),
+        "codex-worker": Role("codex", "gpt-6.1-sol", "medium", "worktree", "implement", "Implement a settled, scoped change in an isolated checkout."),
+        "codex-gate": Role("codex", "gpt-6-luna", "medium", kind="gate", description="Lightweight completion evidence checker: inspect claimed files, test logs, docs, and experiment records for existence and match without running tests, builds, or servers; direct contradictions return RECHECK_SOL, uncertainty is reported, otherwise PASS."),
+        "codex-debug": Role("codex", "gpt-6.1-sol", "xhigh", "worktree", "debug", "Investigate and repair a difficult failure with a reproducer."),
         "claude-chat": Role("claude", kind="discuss", description="Text-only Claude completion; tools disabled."),
         "grok-chat": Role("grok", kind="discuss", description="Text-only Grok completion; tools disabled."),
     }
 
 
-ALIASES = {"scout": "codex-scout", "research": "codex-scout", "gate": "codex-reviewer", "critic": "codex-reviewer", "chore": "codex-worker", "operator": "codex-worker", "worker": "codex-worker", "debug": "codex-debug", "deep": "codex-debug", "scientist": "codex-debug", "codex-terra": "codex-worker", "codex-sol": "codex-debug"}
+ALIASES = {"scout": "codex-scout", "research": "codex-scout", "gate": "codex-gate", "critic": "codex-reviewer", "chore": "codex-worker", "operator": "codex-worker", "worker": "codex-worker", "debug": "codex-debug", "deep": "codex-debug", "scientist": "codex-debug", "codex-terra": "codex-worker", "codex-sol": "codex-debug"}
 
 
 @dataclass
@@ -47,7 +48,10 @@ class Settings:
     token_file: Path = field(default_factory=lambda: Path.home() / ".config/agent-exec/service.token")
     host: str = "127.0.0.1"
     port: int = 9891
-    max_concurrency: int = 3
+    max_concurrency: int = 4
+    max_scout_depth: int = 2
+    max_scout_concurrency: int = 10
+    max_scout_children: int = 10
     max_pending: int = 100
     default_timeout_seconds: int = 300
     max_timeout_seconds: int = 1800
@@ -110,7 +114,7 @@ def load_settings(path: str | Path | None = None) -> Settings:
             settings.executables.update(value)
         else:
             setattr(settings, name, value)
-    for key, low, high in (("port", 1, 65535), ("max_concurrency", 1, 32), ("max_pending", 1, 10000), ("default_timeout_seconds", 1, 86400), ("max_timeout_seconds", 1, 86400), ("max_output_bytes", 1024, 64*1024*1024)):
+    for key, low, high in (("port", 1, 65535), ("max_concurrency", 1, 32), ("max_scout_depth", 0, 4), ("max_scout_concurrency", 1, 32), ("max_scout_children", 1, 16), ("max_pending", 1, 10000), ("default_timeout_seconds", 1, 86400), ("max_timeout_seconds", 1, 86400), ("max_output_bytes", 1024, 64*1024*1024)):
         v = getattr(settings, key)
         if type(v) is not int or not low <= v <= high:
             raise ValueError(f"Invalid {key}")

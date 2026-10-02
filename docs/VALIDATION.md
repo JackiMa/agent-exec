@@ -54,3 +54,24 @@
 - 宿主配置备份：`/home/gema/.local/state/agent-exec/host-config-backups/20260928T151416-605ddf2a/`。
 
 复现命令见 README 和 scripts。历史记录只代表所列版本/运行，后续模型、账号、CLI 或配置变化需要重新验证。
+
+
+## 2026-10-02：角色、scout 并行度和 Codex MCP
+
+- 正常网络环境 Python 3.13 pytest：84 passed（包括两个真实 TCP + stdio MCP fixture）。
+- legacy shell smoke：80 passed、0 failed；历史资产和 golden runner 未修改。
+- 新容量测试使用 fake Codex：4 个顶层、同一父任务 10 个 scout、下一层 10 个 scout
+  同时进入已准备执行状态；第 11 个直接 child 被拒绝，取消后 24 个任务均清理完成。
+- 真实 stdio MCP → 服务 → `gpt-6-luna / medium` Codex → scoped scout MCP
+  → 同模型 child：父子 exit 0、succeeded，child 输出匹配；通过服务父子关联、
+  provider session ID 和 supervisor 状态核对，未只采信模型报告。
+- `gpt-6.1-sol / high` reviewer 真实文本 smoke：exit 0、succeeded，标记匹配。
+- 服务已重载，API 确认新 instance、源码 SHA256、五个角色、gate 独立别名以及
+  4/10/10 的槽位配置；Codex config 和原生 agent 文件部署前后校验值一致。
+- 明确边界：十个并发使用 fixture；未同时运行十个真实模型，也未单独重验新
+  worker/debug 的真实写入、Claude/Grok 或第二台 PC。3.10 本轮只做语法兼容检查。
+
+MCP credential 传递使用官方 `env_vars` 显式转发；固定 child 标记使缺少 scoped
+credential 的代理拒绝回退至 owner token。该修复有 command 回归与真实嵌套 smoke。
+上下文、follow-up、原生线程与外部 run 的区别见 [Codex 接入说明](CODEX_INTEGRATION.md)。
+原始日志、部署备份和模型运行证据留在 Git 外的私有本机更新目录。

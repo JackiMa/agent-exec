@@ -5,12 +5,13 @@ import json
 import os
 import re
 import shutil
+import sys
 from pathlib import Path
 
 from .config import Role, Settings
 
 
-def command(settings: Settings, role: Role, cwd: Path) -> list[str]:
+def command(settings: Settings, role: Role, cwd: Path, *, delegate_scout: bool = False) -> list[str]:
     if role.provider == "command":
         # Trusted administrator configuration, primarily for deterministic fixtures.
         return list(role.argv)
@@ -27,6 +28,15 @@ def command(settings: Settings, role: Role, cwd: Path) -> list[str]:
             args += ["-c", "mcp_servers.agent_exec.enabled=false"]
         if role.model:
             args += ["--model", role.model]
+        if delegate_scout:
+            args += ["-c", f"mcp_servers.agent_exec_scout.command={json.dumps(sys.executable)}",
+                     "-c", 'mcp_servers.agent_exec_scout.args=["-m", "agent_exec.mcp_server"]',
+                     "-c", "mcp_servers.agent_exec_scout.enabled=true",
+                     "-c", 'mcp_servers.agent_exec_scout.env_vars=["AGENT_EXEC_CHILD", "AGENT_EXEC_SCOUT_TOKEN", "AGENT_EXEC_URL", "PYTHONPATH"]',
+                     "-c", 'mcp_servers.agent_exec_scout.env.AGENT_EXEC_CHILD="1"',
+                     "-c", 'mcp_servers.agent_exec_scout.default_tools_approval_mode="writes"',
+                     "-c", 'mcp_servers.agent_exec_scout.tools.agent_exec_submit.approval_mode="approve"',
+                     "-c", 'mcp_servers.agent_exec_scout.tools.agent_exec_cancel.approval_mode="approve"']
         return args + ["-"]
     if role.provider == "claude":
         args = [executable, "-p", "--output-format", "json", "--tools", "", "--safe-mode", "--permission-prompts", "none", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']

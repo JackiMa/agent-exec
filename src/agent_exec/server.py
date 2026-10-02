@@ -236,6 +236,8 @@ def create_app(
         return await _call(service.verdict, run_id, accepted=accepted, reason=reason, evidence=evidence)
 
     app.include_router(router)
+    from .scout_api import scout_router
+    app.include_router(scout_router(service))
     return app
 
 

@@ -35,8 +35,24 @@ delegation.  At high effort or above, dispatch independent slices:
 - scouts for read-only discovery, logs, and repository mapping;
 - settled workers for a specified edit and its local check;
 - reviewers for independent evidence or diff review.
+- gates for lightweight completion checks: inspect claimed files and saved
+  test/experiment evidence; return PASS or RECHECK_SOL for a direct contradiction.
+  Gates do not rerun tests/builds/servers or redesign the solution.
 
-Do not recursively dispatch from an agent-exec worker.  A worker must not
+Codex jobs may delegate read-only `codex-scout` jobs through their scoped
+`agent_exec_scout` MCP or the task CLI. A scout can delegate another scout within
+the configured depth limit (default two scout levels). Never delegate workers,
+debuggers, gates or reviewers from a child. Each child inherits the actual parent
+execution directory, including a parent's isolated worktree, and the parent's
+deadline. Child credentials only authorize that parent's direct scouts; they
+cannot accept results, access unrelated runs or invoke the owner API. Inspect
+scout evidence before returning; finishing the parent cancels unfinished scouts.
+
+Default models: scout/gate `gpt-6-luna` at medium; worker `gpt-6.1-sol` at medium;
+reviewer `gpt-6.1-sol` at high; debug `gpt-6.1-sol` at xhigh. `gate` maps to
+`codex-gate`; `critic` maps to `codex-reviewer`.
+
+A worker must not
 commit, merge, rebase, stash, reset, or clean.  Writing workers need their own
 worktree and must leave every out-of-scope file exactly as found.  Provider
 sandboxing and worktrees constrain a run; they do not make a host prompt or a
@@ -77,3 +93,5 @@ submit/cancel. Query tools are annotated read-only. If host policy rejects a
 mutation, report that policy result; do not relabel the tool as read-only or
 disable the global sandbox. The local installed configuration grants only this
 service's submit/cancel operations; the service still checks its role/workspace registry.
+
+For Codex integration and native-thread differences, read [Codex integration](../../docs/CODEX_INTEGRATION.md). The service defaults to 24 total execution slots (4 root + 10 per scout depth) and up to 10 lifetime direct scouts per parent. Service run IDs are not native Codex agent IDs.
